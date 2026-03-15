@@ -129,12 +129,6 @@ class F1Dashboard(tk.Tk):
     def _apply_style(self):
         style = ttk.Style(self)
         style.theme_use("clam")
-        # Fix combobox dropdown list colours (option database, not ttk)
-        self.option_add("*TCombobox*Listbox.background", BG_CARD)
-        self.option_add("*TCombobox*Listbox.foreground", TEXT_PRIMARY)
-        self.option_add("*TCombobox*Listbox.selectBackground", ACCENT_RED)
-        self.option_add("*TCombobox*Listbox.selectForeground", TEXT_PRIMARY)
-
         style.configure(".",
             background=BG_DARK, foreground=TEXT_PRIMARY,
             fieldbackground=BG_CARD, troughcolor=BG_PANEL,
@@ -182,32 +176,46 @@ class F1Dashboard(tk.Tk):
 
         pad = dict(padx=16, pady=6)
 
+        om_cfg = dict(
+            bg=BG_CARD, fg=TEXT_PRIMARY, activebackground=ACCENT_RED,
+            activeforeground=TEXT_PRIMARY, highlightthickness=0,
+            relief="flat", font=("Helvetica", 11), anchor="w",
+            indicatoron=True, bd=0,
+        )
+        menu_cfg = dict(
+            bg=BG_CARD, fg=TEXT_PRIMARY, activebackground=ACCENT_RED,
+            activeforeground=TEXT_PRIMARY, relief="flat",
+            font=("Helvetica", 11), bd=0, tearoff=0,
+        )
+
         # Season
         tk.Label(sidebar, text="SEASON", bg=BG_PANEL, fg=TEXT_DIM,
                  font=("Helvetica", 9, "bold")).pack(anchor="w", padx=16, pady=(18, 2))
         self.year_var = tk.StringVar(value="2026")
-        year_combo = ttk.Combobox(sidebar, textvariable=self.year_var,
-                                  values=[str(y) for y in range(2018, 2027)],
-                                  state="readonly", width=24)
-        year_combo.pack(**pad)
-        year_combo.bind("<<ComboboxSelected>>", lambda e: self._fetch_schedule())
+        year_menu = tk.OptionMenu(sidebar, self.year_var, *[str(y) for y in range(2018, 2027)])
+        year_menu.config(width=22, **om_cfg)
+        year_menu["menu"].config(**menu_cfg)
+        year_menu.pack(**pad)
+        self.year_var.trace_add("write", lambda *_: self._fetch_schedule())
 
         # Round — populated from schedule
         tk.Label(sidebar, text="ROUND", bg=BG_PANEL, fg=TEXT_DIM,
                  font=("Helvetica", 9, "bold")).pack(anchor="w", padx=16, pady=(10, 2))
         self.round_label_var = tk.StringVar(value="Fetching schedule…")
-        self.round_combo = ttk.Combobox(sidebar, textvariable=self.round_label_var,
-                                        state="disabled", width=24)
-        self.round_combo.pack(**pad)
-        self.round_combo.bind("<<ComboboxSelected>>", lambda e: self._on_round_selected())
+        self.round_menu = tk.OptionMenu(sidebar, self.round_label_var, "Fetching schedule…")
+        self.round_menu.config(width=22, state="disabled", **om_cfg)
+        self.round_menu["menu"].config(**menu_cfg)
+        self.round_menu.pack(**pad)
+        self.round_label_var.trace_add("write", lambda *_: self._on_round_selected())
 
         # Session — filtered per weekend type
         tk.Label(sidebar, text="SESSION", bg=BG_PANEL, fg=TEXT_DIM,
                  font=("Helvetica", 9, "bold")).pack(anchor="w", padx=16, pady=(10, 2))
         self.session_label_var = tk.StringVar(value="—")
-        self.session_combo = ttk.Combobox(sidebar, textvariable=self.session_label_var,
-                                          state="disabled", width=24)
-        self.session_combo.pack(**pad)
+        self.session_menu = tk.OptionMenu(sidebar, self.session_label_var, "—")
+        self.session_menu.config(width=22, state="disabled", **om_cfg)
+        self.session_menu["menu"].config(**menu_cfg)
+        self.session_menu.pack(**pad)
 
         # Load button
         tk.Frame(sidebar, bg=BG_PANEL, height=10).pack()
@@ -254,8 +262,8 @@ class F1Dashboard(tk.Tk):
         if not FASTF1_AVAILABLE:
             return
         year = int(self.year_var.get())
-        self.round_combo.config(state="disabled")
-        self.session_combo.config(state="disabled")
+        self.round_menu.config(state="disabled")
+        self.session_menu.config(state="disabled")
         self.round_label_var.set("Loading schedule…")
         self.session_label_var.set("—")
         self.status_var.set(f"Fetching {year} schedule…")
@@ -303,11 +311,16 @@ class F1Dashboard(tk.Tk):
             self._round_labels.append(label)
             self._label_to_round[label] = rnd
 
-        self.round_combo.config(values=self._round_labels, state="readonly")
+        # Repopulate the round OptionMenu
+        menu = self.round_menu["menu"]
+        menu.delete(0, "end")
+        for lbl in self._round_labels:
+            menu.add_command(label=lbl, command=lambda l=lbl: self.round_label_var.set(l))
+
         if self._round_labels:
-            # Default to most recent completed round
+            self.round_menu.config(state="normal")
+            # Temporarily pause trace to avoid double-fire, set directly
             self.round_label_var.set(self._round_labels[-1])
-            self._on_round_selected()
         else:
             self.round_label_var.set("No completed rounds yet")
             self.status_var.set(f"No completed rounds in {year} yet")
@@ -333,7 +346,11 @@ class F1Dashboard(tk.Tk):
         keys   = SPRINT_SESSIONS if sprint else STANDARD_SESSIONS
         labels = [SESSION_LABELS[k] for k in keys]
 
-        self.session_combo.config(values=labels, state="readonly")
+        menu = self.session_menu["menu"]
+        menu.delete(0, "end")
+        for lbl in labels:
+            menu.add_command(label=lbl, command=lambda l=lbl: self.session_label_var.set(l))
+        self.session_menu.config(state="normal")
         self.session_label_var.set(SESSION_LABELS["R"])   # default to Race
 
         badge = "🏁 Sprint weekend" if sprint else "Standard weekend"
