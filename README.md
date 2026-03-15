@@ -2,7 +2,7 @@
 
 A desktop app for exploring Formula 1 session data. Built with Python, Tkinter, FastF1, and Matplotlib. You can browse race results, compare lap times between drivers, and look at telemetry data for any session from 2018 to the current season.
 
-> **Author:** <!-- your name / GitHub username here -->
+> **Author:** LordCarvell
 
 ---
 
