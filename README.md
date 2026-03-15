@@ -36,7 +36,7 @@ matplotlib
 **1. Clone or download the repo**
 
 ```bash
-git clone https://github.com/yourusername/f1-dashboard.git
+git clone https://github.com/LordCarvell/fastF1.git
 cd f1-dashboard
 ```
 
